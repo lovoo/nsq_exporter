@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"stash.lvint.de/it/nsq_exporter/collector"
+	"github.com/lovoo/nsq_exporter/collector"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
