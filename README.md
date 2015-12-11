@@ -6,7 +6,7 @@ NSQ exporter for prometheus.io, written in go.
 
 ## Usage
 
-    docker run -d --name nsq_exporter --link nsqd:nsqd lovoo/nsq_exporter:latest -nsq.addr=http://nsq:4151 -collectors=nsqstats
+    docker run -d --name nsq_exporter -l nsqd:nsqd -p 9117:9117 lovoo/nsq_exporter:latest -nsq.addr=http://nsqd:4151 -collectors=nsqstats
 
 ## Building
 
