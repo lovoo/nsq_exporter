@@ -6,18 +6,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type channelsCollector []struct {
+type channelStats []struct {
 	val func(*channel) float64
 	vec *prometheus.GaugeVec
 }
 
-// ChannelsCollector creates a new stats collector which is able to
+// ChannelStats creates a new stats collector which is able to
 // expose the channel metrics of a nsqd node to Prometheus. The
 // channel metrics are reported per topic.
-func ChannelsCollector(namespace string) StatsCollector {
+func ChannelStats(namespace string) StatsCollector {
 	labels := []string{"type", "topic", "channel", "paused"}
 
-	return channelsCollector{
+	return channelStats{
 		{
 			val: func(c *channel) float64 { return float64(len(c.Clients)) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -85,7 +85,7 @@ func ChannelsCollector(namespace string) StatsCollector {
 	}
 }
 
-func (coll channelsCollector) collect(s *stats, out chan<- prometheus.Metric) {
+func (cs channelStats) collect(s *stats, out chan<- prometheus.Metric) {
 	for _, topic := range s.Topics {
 		for _, channel := range topic.Channels {
 			labels := prometheus.Labels{
@@ -95,7 +95,7 @@ func (coll channelsCollector) collect(s *stats, out chan<- prometheus.Metric) {
 				"paused":  strconv.FormatBool(channel.Paused),
 			}
 
-			for _, c := range coll {
+			for _, c := range cs {
 				c.vec.With(labels).Set(c.val(channel))
 				c.vec.Collect(out)
 			}

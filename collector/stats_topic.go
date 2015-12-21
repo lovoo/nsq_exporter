@@ -6,17 +6,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type topicsCollector []struct {
+type topicStats []struct {
 	val func(*topic) float64
 	vec *prometheus.GaugeVec
 }
 
-// TopicsCollector creates a new stats collector which is able to
+// TopicStats creates a new stats collector which is able to
 // expose the topic metrics of a nsqd node to Prometheus.
-func TopicsCollector(namespace string) StatsCollector {
+func TopicStats(namespace string) StatsCollector {
 	labels := []string{"type", "topic", "paused"}
 
-	return topicsCollector{
+	return topicStats{
 		{
 			val: func(t *topic) float64 { return float64(len(t.Channels)) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -52,7 +52,7 @@ func TopicsCollector(namespace string) StatsCollector {
 	}
 }
 
-func (coll topicsCollector) collect(s *stats, out chan<- prometheus.Metric) {
+func (ts topicStats) collect(s *stats, out chan<- prometheus.Metric) {
 	for _, topic := range s.Topics {
 		labels := prometheus.Labels{
 			"type":   "topic",
@@ -60,7 +60,7 @@ func (coll topicsCollector) collect(s *stats, out chan<- prometheus.Metric) {
 			"paused": strconv.FormatBool(topic.Paused),
 		}
 
-		for _, c := range coll {
+		for _, c := range ts {
 			c.vec.With(labels).Set(c.val(topic))
 			c.vec.Collect(out)
 		}

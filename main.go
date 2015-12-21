@@ -29,9 +29,9 @@ var (
 
 	// stats.* collectors
 	statsRegistry = map[string]func(namespace string) collector.StatsCollector{
-		"topics":   collector.TopicsCollector,
-		"channels": collector.ChannelsCollector,
-		"clients":  collector.ClientsCollector,
+		"topics":   collector.TopicStats,
+		"channels": collector.ChannelStats,
+		"clients":  collector.ClientStats,
 	}
 )
 
