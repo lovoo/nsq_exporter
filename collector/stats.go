@@ -3,8 +3,6 @@ package collector
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type statsResponse struct {
@@ -20,86 +18,57 @@ type stats struct {
 	Topics    []*topic `json:"topics"`
 }
 
-type statsCollector struct {
-	nsqUrl string
-
-	topicCount   prometheus.Gauge
-	channelCount *prometheus.GaugeVec
-	clientCount  *prometheus.GaugeVec
-
-	topics   topicCollector
-	channels channelCollector
-	clients  clientCollector
+// see https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
+type topic struct {
+	Name         string     `json:"topic_name"`
+	Paused       bool       `json:"paused"`
+	Depth        int64      `json:"depth"`
+	BackendDepth int64      `json:"backend_depth"`
+	MessageCount uint64     `json:"message_count"`
+	Channels     []*channel `json:"channels"`
 }
 
-// NewStatsCollector create a collector which collects all NSQ metrics
-// from the /stats route of the NSQ host.
-func NewStatsCollector(nsqUrl string) Collector {
-	const namespace = "nsq"
-	return &statsCollector{
-		nsqUrl: nsqUrl,
-
-		topicCount: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "topics_total",
-			Help:      "The total number of topics",
-		}),
-		channelCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "channels_total",
-			Help:      "The total number of channels",
-		}, []string{"topic"}),
-		clientCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "channels_total",
-			Help:      "The total number of channels",
-		}, []string{"topic", "channel"}),
-
-		topics:   newTopicCollector(namespace),
-		channels: newChannelCollector(namespace),
-		clients:  newClientCollector(namespace),
-	}
+type channel struct {
+	Name          string    `json:"channel_name"`
+	Paused        bool      `json:"paused"`
+	Depth         int64     `json:"depth"`
+	BackendDepth  int64     `json:"backend_depth"`
+	MessageCount  uint64    `json:"message_count"`
+	InFlightCount int       `json:"in_flight_count"`
+	DeferredCount int       `json:"deferred_count"`
+	RequeueCount  uint64    `json:"requeue_count"`
+	TimeoutCount  uint64    `json:"timeout_count"`
+	Clients       []*client `json:"clients"`
 }
 
-func (c *statsCollector) Collect(out chan<- prometheus.Metric) error {
-	s, err := c.fetchStats()
-	if err != nil {
-		return err
-	}
-
-	c.topicCount.Set(float64(len(s.Topics)))
-
-	for _, topic := range s.Topics {
-		c.channelCount.With(prometheus.Labels{
-			"topic": topic.Name,
-		}).Set(float64(len(topic.Channels)))
-
-		c.topics.update(topic, out)
-		for _, channel := range topic.Channels {
-			c.clientCount.With(prometheus.Labels{
-				"topic":   topic.Name,
-				"channel": channel.Name,
-			}).Set(float64(len(channel.Clients)))
-
-			c.channels.update(topic.Name, channel, out)
-			for _, client := range channel.Clients {
-				c.clients.update(topic.Name, channel.Name, client, out)
-			}
-		}
-	}
-	return nil
+type client struct {
+	ID            string `json:"client_id"`
+	Hostname      string `json:"hostname"`
+	Version       string `json:"version"`
+	RemoteAddress string `json:"remote_address"`
+	State         int32  `json:"state"`
+	FinishCount   uint64 `json:"finish_count"`
+	MessageCount  uint64 `json:"message_count"`
+	ReadyCount    int64  `json:"ready_count"`
+	InFlightCount int64  `json:"in_flight_count"`
+	RequeueCount  uint64 `json:"requeue_count"`
+	ConnectTime   int64  `json:"connect_ts"`
+	SampleRate    int32  `json:"sample_rate"`
+	Deflate       bool   `json:"deflate"`
+	Snappy        bool   `json:"snappy"`
+	TLS           bool   `json:"tls"`
 }
 
-func (c *statsCollector) fetchStats() (*stats, error) {
-	resp, err := http.Get(c.nsqUrl)
+func getNsqdStats(nsqdURL string) (*stats, error) {
+	resp, err := http.Get(nsqdURL)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var s statsResponse
-	if err = json.NewDecoder(resp.Body).Decode(&s); err != nil {
+	var sr statsResponse
+	if err = json.NewDecoder(resp.Body).Decode(&sr); err != nil {
 		return nil, err
 	}
-	return &s.Data, nil
+	return &sr.Data, nil
 }

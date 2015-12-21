@@ -6,42 +6,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// see https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
-type client struct {
-	ID                            string `json:"client_id"`
-	Hostname                      string `json:"hostname"`
-	Version                       string `json:"version"`
-	RemoteAddress                 string `json:"remote_address"`
-	State                         int32  `json:"state"`
-	ReadyCount                    int64  `json:"ready_count"`
-	InFlightCount                 int64  `json:"in_flight_count"`
-	MessageCount                  uint64 `json:"message_count"`
-	FinishCount                   uint64 `json:"finish_count"`
-	RequeueCount                  uint64 `json:"requeue_count"`
-	ConnectTime                   int64  `json:"connect_ts"`
-	SampleRate                    int32  `json:"sample_rate"`
-	Deflate                       bool   `json:"deflate"`
-	Snappy                        bool   `json:"snappy"`
-	UserAgent                     string `json:"user_agent"`
-	Authed                        bool   `json:"authed,omitempty"`
-	AuthIdentity                  string `json:"auth_identity,omitempty"`
-	AuthIdentityURL               string `json:"auth_identity_url,omitempty"`
-	TLS                           bool   `json:"tls"`
-	CipherSuite                   string `json:"tls_cipher_suite"`
-	TLSVersion                    string `json:"tls_version"`
-	TLSNegotiatedProtocol         string `json:"tls_negotiated_protocol"`
-	TLSNegotiatedProtocolIsMutual bool   `json:"tls_negotiated_protocol_is_mutual"`
-}
-
-type clientCollector []struct {
+type clientsCollector []struct {
 	val func(*client) float64
 	vec *prometheus.GaugeVec
 }
 
-func newClientCollector(namespace string) clientCollector {
+// ClientsCollector creates a new stats collector which is able to
+// expose the client metrics of a nsqd node to Prometheus. The
+// client metrics are reported per topic and per channel.
+//
+// If there are too many clients, it could cause a timeout of the
+// Prometheus collection process. So be sure the number of clients
+// is small enough when using this collector.
+func ClientsCollector(namespace string) StatsCollector {
 	labels := []string{"type", "topic", "channel", "deflate", "snappy", "tls", "client_id", "hostname", "version", "remote_address"}
 
-	return clientCollector{
+	return clientsCollector{
 		{
 			// TODO: Give state a descriptive name instead of a number.
 			val: func(c *client) float64 { return float64(c.State) },
@@ -110,22 +90,28 @@ func newClientCollector(namespace string) clientCollector {
 	}
 }
 
-func (c clientCollector) update(topic, channel string, cl *client, out chan<- prometheus.Metric) {
-	labels := prometheus.Labels{
-		"type":           "client",
-		"topic":          topic,
-		"channel":        channel,
-		"deflate":        strconv.FormatBool(cl.Deflate),
-		"snappy":         strconv.FormatBool(cl.Snappy),
-		"tls":            strconv.FormatBool(cl.TLS),
-		"client_id":      cl.ID,
-		"hostname":       cl.Hostname,
-		"version":        cl.Version,
-		"remote_address": cl.RemoteAddress,
-	}
+func (coll clientsCollector) collect(s *stats, out chan<- prometheus.Metric) {
+	for _, topic := range s.Topics {
+		for _, channel := range topic.Channels {
+			for _, client := range channel.Clients {
+				labels := prometheus.Labels{
+					"type":           "client",
+					"topic":          topic.Name,
+					"channel":        channel.Name,
+					"deflate":        strconv.FormatBool(client.Deflate),
+					"snappy":         strconv.FormatBool(client.Snappy),
+					"tls":            strconv.FormatBool(client.TLS),
+					"client_id":      client.ID,
+					"hostname":       client.Hostname,
+					"version":        client.Version,
+					"remote_address": client.RemoteAddress,
+				}
 
-	for _, g := range c {
-		g.vec.With(labels).Set(g.val(cl))
-		g.vec.Collect(out)
+				for _, c := range coll {
+					c.vec.With(labels).Set(c.val(client))
+					c.vec.Collect(out)
+				}
+			}
+		}
 	}
 }
