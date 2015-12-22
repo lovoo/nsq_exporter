@@ -6,29 +6,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// see https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
-type channel struct {
-	Name          string    `json:"channel_name"`
-	Depth         int64     `json:"depth"`
-	BackendDepth  int64     `json:"backend_depth"`
-	InFlightCount int       `json:"in_flight_count"`
-	DeferredCount int       `json:"deferred_count"`
-	MessageCount  uint64    `json:"message_count"`
-	RequeueCount  uint64    `json:"requeue_count"`
-	TimeoutCount  uint64    `json:"timeout_count"`
-	Clients       []*client `json:"clients"`
-	Paused        bool      `json:"paused"`
-}
-
-type channelCollector []struct {
+type channelStats []struct {
 	val func(*channel) float64
 	vec *prometheus.GaugeVec
 }
 
-func newChannelCollector(namespace string) channelCollector {
+// ChannelStats creates a new stats collector which is able to
+// expose the channel metrics of a nsqd node to Prometheus. The
+// channel metrics are reported per topic.
+func ChannelStats(namespace string) StatsCollector {
 	labels := []string{"type", "topic", "channel", "paused"}
 
-	return channelCollector{
+	return channelStats{
+		{
+			val: func(c *channel) float64 { return float64(len(c.Clients)) },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "client_count",
+				Help:      "Number of clients",
+			}, labels),
+		},
 		{
 			val: func(c *channel) float64 { return float64(c.Depth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -88,16 +85,20 @@ func newChannelCollector(namespace string) channelCollector {
 	}
 }
 
-func (c channelCollector) update(topic string, ch *channel, out chan<- prometheus.Metric) {
-	labels := prometheus.Labels{
-		"type":    "channel",
-		"topic":   topic,
-		"channel": ch.Name,
-		"paused":  strconv.FormatBool(ch.Paused),
-	}
+func (cs channelStats) collect(s *stats, out chan<- prometheus.Metric) {
+	for _, topic := range s.Topics {
+		for _, channel := range topic.Channels {
+			labels := prometheus.Labels{
+				"type":    "channel",
+				"topic":   topic.Name,
+				"channel": channel.Name,
+				"paused":  strconv.FormatBool(channel.Paused),
+			}
 
-	for _, g := range c {
-		g.vec.With(labels).Set(g.val(ch))
-		g.vec.Collect(out)
+			for _, c := range cs {
+				c.vec.With(labels).Set(c.val(channel))
+				c.vec.Collect(out)
+			}
+		}
 	}
 }

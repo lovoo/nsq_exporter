@@ -6,25 +6,25 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// see https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
-type topic struct {
-	Name         string     `json:"topic_name"`
-	Channels     []*channel `json:"channels"`
-	Depth        int64      `json:"depth"`
-	BackendDepth int64      `json:"backend_depth"`
-	MessageCount uint64     `json:"message_count"`
-	Paused       bool       `json:"paused"`
-}
-
-type topicCollector []struct {
+type topicStats []struct {
 	val func(*topic) float64
 	vec *prometheus.GaugeVec
 }
 
-func newTopicCollector(namespace string) topicCollector {
+// TopicStats creates a new stats collector which is able to
+// expose the topic metrics of a nsqd node to Prometheus.
+func TopicStats(namespace string) StatsCollector {
 	labels := []string{"type", "topic", "paused"}
 
-	return topicCollector{
+	return topicStats{
+		{
+			val: func(t *topic) float64 { return float64(len(t.Channels)) },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "channel_count",
+				Help:      "Number of channels",
+			}, labels),
+		},
 		{
 			val: func(t *topic) float64 { return float64(t.Depth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -52,15 +52,17 @@ func newTopicCollector(namespace string) topicCollector {
 	}
 }
 
-func (c topicCollector) update(t *topic, out chan<- prometheus.Metric) {
-	labels := prometheus.Labels{
-		"type":   "topic",
-		"topic":  t.Name,
-		"paused": strconv.FormatBool(t.Paused),
-	}
+func (ts topicStats) collect(s *stats, out chan<- prometheus.Metric) {
+	for _, topic := range s.Topics {
+		labels := prometheus.Labels{
+			"type":   "topic",
+			"topic":  topic.Name,
+			"paused": strconv.FormatBool(topic.Paused),
+		}
 
-	for _, g := range c {
-		g.vec.With(labels).Set(g.val(t))
-		g.vec.Collect(out)
+		for _, c := range ts {
+			c.vec.With(labels).Set(c.val(topic))
+			c.vec.Collect(out)
+		}
 	}
 }
