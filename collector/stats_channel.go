@@ -59,6 +59,22 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
+			val: func(c *channel) float64 { return c.E2eLatency.Percentiles[0]["value"] },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "e2e_latency_99p",
+				Help:      "e2e latency 99th percentile",
+			}, labels),
+		},
+		{
+			val: func(c *channel) float64 { return c.E2eLatency.Percentiles[1]["value"] },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "e2e_latency_95p",
+				Help:      "e2e latency 95th percentile",
+			}, labels),
+		},
+		{
 			val: func(c *channel) float64 { return float64(c.DeferredCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,

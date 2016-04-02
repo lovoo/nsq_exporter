@@ -42,6 +42,22 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
+			val: func(t *topic) float64 { return t.E2eLatency.Percentiles[0]["value"] },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "e2e_latency_99_percentile",
+				Help:      "Queue e2e latency 99th percentile",
+			}, labels),
+		},
+		{
+			val: func(t *topic) float64 { return t.E2eLatency.Percentiles[1]["value"] },
+			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "e2e_latency_95_percentile",
+				Help:      "Queue e2e latency 95th percentile",
+			}, labels),
+		},
+		{
 			val: func(t *topic) float64 { return float64(t.MessageCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
