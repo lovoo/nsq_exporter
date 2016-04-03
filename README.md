@@ -20,7 +20,6 @@ NSQ exporter for prometheus.io, written in go.
 ## TODO
 
 * collect all nsqd instances over nsqlookupd
-* collect e2elatency, see: https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
 
 ## Contributing
 
