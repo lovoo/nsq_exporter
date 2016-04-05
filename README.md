@@ -13,10 +13,6 @@ NSQ exporter for prometheus.io, written in go.
     go get -u github.com/lovoo/nsq_exporter
     go install github.com/lovoo/nsq_exporter
 
-## TODO
-
-* collect all nsqd instances over nsqlookupd
-
 ## Contributing
 
 1. Fork it!
