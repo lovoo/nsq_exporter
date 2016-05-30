@@ -66,6 +66,17 @@ type client struct {
 	TLS           bool   `json:"tls"`
 }
 
+func getPercentile(t *topic, percentile int) float64 {
+	if len(t.E2eLatency.Percentiles) > 0 {
+		if percentile == 99 {
+			return t.E2eLatency.Percentiles[0]["value"]
+		} else if percentile == 95 {
+			return t.E2eLatency.Percentiles[1]["value"]
+		}
+	}
+	return 0
+}
+
 func getNsqdStats(nsqdURL string) (*stats, error) {
 
 	resp, err := http.Get(nsqdURL)
