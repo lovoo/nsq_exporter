@@ -10,6 +10,10 @@ NSQ exporter for prometheus.io, written in go.
 
 ## Building
 
+    make
+
+    OR
+
     go get -u github.com/lovoo/nsq_exporter
     go install github.com/lovoo/nsq_exporter
 

@@ -25,20 +25,27 @@ type topic struct {
 	Depth        int64      `json:"depth"`
 	BackendDepth int64      `json:"backend_depth"`
 	MessageCount uint64     `json:"message_count"`
+	E2eLatency   e2elatency `json:"e2e_processing_latency"`
 	Channels     []*channel `json:"channels"`
 }
 
 type channel struct {
-	Name          string    `json:"channel_name"`
-	Paused        bool      `json:"paused"`
-	Depth         int64     `json:"depth"`
-	BackendDepth  int64     `json:"backend_depth"`
-	MessageCount  uint64    `json:"message_count"`
-	InFlightCount int       `json:"in_flight_count"`
-	DeferredCount int       `json:"deferred_count"`
-	RequeueCount  uint64    `json:"requeue_count"`
-	TimeoutCount  uint64    `json:"timeout_count"`
-	Clients       []*client `json:"clients"`
+	Name          string     `json:"channel_name"`
+	Paused        bool       `json:"paused"`
+	Depth         int64      `json:"depth"`
+	BackendDepth  int64      `json:"backend_depth"`
+	MessageCount  uint64     `json:"message_count"`
+	InFlightCount int        `json:"in_flight_count"`
+	DeferredCount int        `json:"deferred_count"`
+	RequeueCount  uint64     `json:"requeue_count"`
+	TimeoutCount  uint64     `json:"timeout_count"`
+	E2eLatency    e2elatency `json:"e2e_processing_latency"`
+	Clients       []*client  `json:"clients"`
+}
+
+type e2elatency struct {
+	Count       int                  `json:"count"`
+	Percentiles []map[string]float64 `json:"percentiles"`
 }
 
 type client struct {
@@ -59,7 +66,19 @@ type client struct {
 	TLS           bool   `json:"tls"`
 }
 
+func getPercentile(t *topic, percentile int) float64 {
+	if len(t.E2eLatency.Percentiles) > 0 {
+		if percentile == 99 {
+			return t.E2eLatency.Percentiles[0]["value"]
+		} else if percentile == 95 {
+			return t.E2eLatency.Percentiles[1]["value"]
+		}
+	}
+	return 0
+}
+
 func getNsqdStats(nsqdURL string) (*stats, error) {
+
 	resp, err := http.Get(nsqdURL)
 	if err != nil {
 		return nil, err
