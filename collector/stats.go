@@ -48,6 +48,13 @@ type e2elatency struct {
 	Percentiles []map[string]float64 `json:"percentiles"`
 }
 
+func (e *e2elatency) percentileValue(idx int) float64 {
+	if idx >= len(e.Percentiles) {
+		return 0
+	}
+	return e.Percentiles[idx]["value"]
+}
+
 type client struct {
 	ID            string `json:"client_id"`
 	Hostname      string `json:"hostname"`
