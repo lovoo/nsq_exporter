@@ -1,0 +1,27 @@
+language: go
+go:
+  - 1.7
+
+script:
+  - make build
+  - make test
+
+before_deploy: make release-build
+
+deploy:
+  provider: releases
+  api_key:
+    secure: Qa1P/aaFUOfSkkolxDg8848GRTgE9CKT/hYMJq11dz0zbmdvyCqMUzsaLuFeeYEwvyvZ6hlCarVopt2+6o/jbJZ8xcTncujXAqfxM6dtf9UoCDUwDtCu8OJOe/RgSm+vfcu3dKGKmOa70wP5Y2nKVaaIv76nXbqpt1nlsuJHv/5Vh3FiNdgAKautmhT5lFjJoFgPafFMAsBJGsqfivxJCi7B7Qt+a+OulR4n3eMMwANtqFOgu405QhpQNHbITLZVCRcBd++BWx00Q0tDUgw5seCzK57dzqPV6EUCbAp0Flf3GcITVg03YVdJ05KFp6I2EWBhpkUaYeC0/IBDFx7y675RcoJSyUjTheyoJ5eHxywkv4GS7ygkhOkux8Fg7JPMULaDrMAEW7z7+wuFGClfOCbOWX4Yf3zwOPc2SclHJ5d69LvsJOIZepBgW5H7Erj+pmfISGteCpJVSrGdH62ztNmzfE5PcJUAozdthEcoZIUea5K5b6VEzZbv5N+wy/Do3FU8yCN/K4JJk+pFq4DwSCj02bCA6Y/YffNvybcerZMDGcA8FxrXlDMDILfE+ZXRjUeomUY+8WkQRRzVxroGWV9SHV5H/KTVSRmNLbBiT7561Y3SE0JR+yt0Awrjamaaki0EGSrkaDYQCIYXU9Yr7JZFl1gtKUP0XSA+17zuMo0=
+  file:
+    - build/nsq_exporter_darwin_amd64
+    - build/nsq_exporter_freebsd_386
+    - build/nsq_exporter_freebsd_amd64
+    - build/nsq_exporter_linux_386
+    - build/nsq_exporter_linux_amd64
+    - build/nsq_exporter_linux_arm
+    - build/nsq_exporter_linux_arm64
+    - build/nsq_exporter_windows_386.exe
+    - build/nsq_exporter_windows_amd64.exe
+  on:
+    repo: lovoo/nsq_exporter
+    tags: true
