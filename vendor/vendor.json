@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "xFtqcXoLV+TzdA4IgRPb3GMmi3E=",
+			"path": "bitbucket.org/ww/goautoneg",
+			"revision": "75cd24fc2f2c",
+			"revisionTime": "2012-07-07T11:04:53Z"
+		},
+		{
 			"checksumSHA1": "spyv5/YFBjYyZLZa1U2LBfDR8PM=",
 			"path": "github.com/beorn7/perks/quantile",
 			"revision": "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9",
@@ -21,10 +27,20 @@
 			"revisionTime": "2016-04-24T11:30:07Z"
 		},
 		{
-			"checksumSHA1": "Ph+qmEo8RdBKBHZUhx0y5Oyk/U0=",
+			"checksumSHA1": "TpbZuXCQvnEiTzFc6jhTgFDop3M=",
+			"path": "github.com/prometheus/client_golang/model",
+			"revision": "6dbab8106ed3ed77359ac85d9cf08e30290df864"
+		},
+		{
+			"checksumSHA1": "lmxW0tuAU0yegSQqrzdepyqPLYQ=",
 			"path": "github.com/prometheus/client_golang/prometheus",
-			"revision": "5636dc67ae776adf5590da7349e70fbb9559972d",
+			"revision": "6dbab8106ed3ed77359ac85d9cf08e30290df864",
 			"revisionTime": "2016-09-16T18:03:40Z"
+		},
+		{
+			"checksumSHA1": "0fkxdi0g3zdiWGe/rQiJZKvO9Yc=",
+			"path": "github.com/prometheus/client_golang/text",
+			"revision": "6dbab8106ed3ed77359ac85d9cf08e30290df864"
 		},
 		{
 			"checksumSHA1": "DvwvOlPNAgRntBzt3b3OSRMS2N4=",
