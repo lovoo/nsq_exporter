@@ -15,7 +15,8 @@ type channelStats []struct {
 // expose the channel metrics of a nsqd node to Prometheus. The
 // channel metrics are reported per topic.
 func ChannelStats(namespace string) StatsCollector {
-	labels := []string{"type", "topic", "channel", "paused"}
+	labels := []string{"topic", "channel", "paused"}
+	namespace += "_channel"
 
 	return channelStats{
 		{
@@ -101,11 +102,10 @@ func ChannelStats(namespace string) StatsCollector {
 	}
 }
 
-func (cs channelStats) collect(s *stats, out chan<- prometheus.Metric) {
+func (cs channelStats) set(s *stats) {
 	for _, topic := range s.Topics {
 		for _, channel := range topic.Channels {
 			labels := prometheus.Labels{
-				"type":    "channel",
 				"topic":   topic.Name,
 				"channel": channel.Name,
 				"paused":  strconv.FormatBool(channel.Paused),
@@ -113,8 +113,25 @@ func (cs channelStats) collect(s *stats, out chan<- prometheus.Metric) {
 
 			for _, c := range cs {
 				c.vec.With(labels).Set(c.val(channel))
-				c.vec.Collect(out)
 			}
 		}
+	}
+}
+
+func (cs channelStats) collect(out chan<- prometheus.Metric) {
+	for _, c := range cs {
+		c.vec.Collect(out)
+	}
+}
+
+func (cs channelStats) describe(ch chan<- *prometheus.Desc) {
+	for _, c := range cs {
+		c.vec.Describe(ch)
+	}
+}
+
+func (cs channelStats) reset() {
+	for _, c := range cs {
+		c.vec.Reset()
 	}
 }

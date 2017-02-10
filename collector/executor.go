@@ -11,63 +11,74 @@ import (
 // This type implements the prometheus.Collector interface and can be
 // registered in the metrics collection.
 //
-// The executor takes the time needed by each registered collector and
+// The executor takes the time needed for scraping nsqd stat endpoint and
 // provides an extra metric for this. This metric is labeled with the
-// result ("success" or "error") and the collector.
+// scrape result ("success" or "error").
 type NsqExecutor struct {
-	collectors map[string]Collector
+	nsqdURL string
+
+	collectors []StatsCollector
 	summary    *prometheus.SummaryVec
+	mutex      sync.RWMutex
 }
 
-// NewNsqExecutor creates a new executor for the NSQ metrics.
-func NewNsqExecutor(namespace string) *NsqExecutor {
+// NewNsqExecutor creates a new executor for collecting NSQ metrics.
+func NewNsqExecutor(namespace, nsqdURL string) *NsqExecutor {
+	sum := prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace: namespace,
+		Subsystem: "exporter",
+		Name:      "scrape_duration_seconds",
+		Help:      "Duration of a scrape job of the NSQ exporter",
+	}, []string{"result"})
+	prometheus.MustRegister(sum)
 	return &NsqExecutor{
-		collectors: make(map[string]Collector),
-		summary: prometheus.NewSummaryVec(prometheus.SummaryOpts{
-			Namespace: namespace,
-			Subsystem: "exporter",
-			Name:      "scape_duration_seconds",
-			Help:      "Duration of a scrape job of the NSQ exporter",
-		}, []string{"collector", "result"}),
+		nsqdURL: nsqdURL,
+		summary: sum,
 	}
 }
 
-// AddCollector adds a new collector for the metrics collection.
-// Each collector needs a unique name which is used as a label
-// for the executor metric.
-func (e *NsqExecutor) AddCollector(name string, c Collector) {
-	e.collectors[name] = c
+// Use configures a specific stats collector, so the stats could be
+// exposed to the Prometheus system.
+func (e *NsqExecutor) Use(c StatsCollector) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	e.collectors = append(e.collectors, c)
 }
 
 // Describe implements the prometheus.Collector interface.
-func (e *NsqExecutor) Describe(out chan<- *prometheus.Desc) {
-	e.summary.Describe(out)
+func (e *NsqExecutor) Describe(ch chan<- *prometheus.Desc) {
+	for _, c := range e.collectors {
+		c.describe(ch)
+	}
 }
 
 // Collect implements the prometheus.Collector interface.
 func (e *NsqExecutor) Collect(out chan<- prometheus.Metric) {
-	var wg sync.WaitGroup
-	wg.Add(len(e.collectors))
-	for name, coll := range e.collectors {
-		go func(name string, coll Collector) {
-			e.exec(name, coll, out)
-			wg.Done()
-		}(name, coll)
-	}
-	wg.Wait()
-}
-
-func (e *NsqExecutor) exec(name string, coll Collector, out chan<- prometheus.Metric) {
 	start := time.Now()
-	err := coll.Collect(out)
-	dur := time.Since(start)
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 
-	labels := prometheus.Labels{"collector": name}
-	if err != nil {
-		labels["result"] = "error"
-	} else {
-		labels["result"] = "success"
+	// reset state, because metrics can gone
+	for _, c := range e.collectors {
+		c.reset()
 	}
 
-	e.summary.With(labels).Observe(dur.Seconds())
+	stats, err := getNsqdStats(e.nsqdURL)
+	tScrape := time.Since(start).Seconds()
+
+	result := "success"
+	if err != nil {
+		result = "error"
+	}
+
+	e.summary.WithLabelValues(result).Observe(tScrape)
+
+	if err == nil {
+		for _, c := range e.collectors {
+			c.set(stats)
+		}
+		for _, c := range e.collectors {
+			c.collect(out)
+		}
+	}
 }

@@ -2,7 +2,11 @@ package collector
 
 import "github.com/prometheus/client_golang/prometheus"
 
-// Collector defines the interface for collecting all metrics for Prometheus.
-type Collector interface {
-	Collect(out chan<- prometheus.Metric) error
+// StatsCollector defines an interface for collecting specific stats
+// from a nsqd exported stats data.
+type StatsCollector interface {
+	set(s *stats)
+	collect(out chan<- prometheus.Metric)
+	describe(ch chan<- *prometheus.Desc)
+	reset()
 }
