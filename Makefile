@@ -8,6 +8,14 @@ GOX_ARGS = -output="$(BUILD_DIR)/{{.Dir}}_{{.OS}}_{{.Arch}}" -osarch="linux/amd6
 build:
 	$(GO) build -o $(BUILD_DIR)/nsq_exporter .
 
+.PHONY: deps-init deps-get
+deps-init:
+	@go get -u github.com/kardianos/govendor
+	$(GOPATH)/bin/govendor init
+
+deps-get: deps-init
+	@$(GOPATH)/bin/govendor get github.com/lovoo/nsq_exporter
+
 .PHONY: clean
 clean:
 	rm -R $(BUILD_DIR)/* || true
