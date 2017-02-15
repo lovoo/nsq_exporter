@@ -15,14 +15,12 @@ package prometheus
 
 import (
 	"fmt"
-	"hash/fnv"
 	"math"
 	"sort"
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/prometheus/client_golang/model"
 	dto "github.com/prometheus/client_model/go"
 )
 
@@ -49,15 +47,19 @@ type Histogram interface {
 	Observe(float64)
 }
 
+// bucketLabel is used for the label that defines the upper bound of a
+// bucket of a histogram ("le" -> "less or equal").
+const bucketLabel = "le"
+
+// DefBuckets are the default Histogram buckets. The default buckets are
+// tailored to broadly measure the response time (in seconds) of a network
+// service. Most likely, however, you will be required to define buckets
+// customized to your use case.
 var (
-	// DefBuckets are the default Histogram buckets. The default buckets are
-	// tailored to broadly measure the response time (in seconds) of a
-	// network service. Most likely, however, you will be required to define
-	// buckets customized to your use case.
 	DefBuckets = []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
 
 	errBucketLabelNotAllowed = fmt.Errorf(
-		"%q is not allowed as label name in histograms", model.BucketLabel,
+		"%q is not allowed as label name in histograms", bucketLabel,
 	)
 )
 
@@ -171,12 +173,12 @@ func newHistogram(desc *Desc, opts HistogramOpts, labelValues ...string) Histogr
 	}
 
 	for _, n := range desc.variableLabels {
-		if n == model.BucketLabel {
+		if n == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}
 	for _, lp := range desc.constLabelPairs {
-		if lp.GetName() == model.BucketLabel {
+		if lp.GetName() == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}
@@ -208,7 +210,7 @@ func newHistogram(desc *Desc, opts HistogramOpts, labelValues ...string) Histogr
 	// Finally we know the final length of h.upperBounds and can make counts.
 	h.counts = make([]uint64, len(h.upperBounds))
 
-	h.Init(h) // Init self-collection.
+	h.init(h) // Init self-collection.
 	return h
 }
 
@@ -220,7 +222,7 @@ type histogram struct {
 	sumBits uint64
 	count   uint64
 
-	SelfCollector
+	selfCollector
 	// Note that there is no mutex required.
 
 	desc *Desc
@@ -285,7 +287,7 @@ func (h *histogram) Write(out *dto.Metric) error {
 // (e.g. HTTP request latencies, partitioned by status code and method). Create
 // instances with NewHistogramVec.
 type HistogramVec struct {
-	MetricVec
+	*MetricVec
 }
 
 // NewHistogramVec creates a new HistogramVec based on the provided HistogramOpts and
@@ -299,14 +301,9 @@ func NewHistogramVec(opts HistogramOpts, labelNames []string) *HistogramVec {
 		opts.ConstLabels,
 	)
 	return &HistogramVec{
-		MetricVec: MetricVec{
-			children: map[uint64]Metric{},
-			desc:     desc,
-			hash:     fnv.New64a(),
-			newMetric: func(lvs ...string) Metric {
-				return newHistogram(desc, opts, lvs...)
-			},
-		},
+		MetricVec: newMetricVec(desc, func(lvs ...string) Metric {
+			return newHistogram(desc, opts, lvs...)
+		}),
 	}
 }
 

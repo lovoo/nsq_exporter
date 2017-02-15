@@ -19,7 +19,8 @@ type clientStats []struct {
 // Prometheus collection process. So be sure the number of clients
 // is small enough when using this collector.
 func ClientStats(namespace string) StatsCollector {
-	labels := []string{"type", "topic", "channel", "deflate", "snappy", "tls", "client_id", "hostname", "version", "remote_address"}
+	labels := []string{"topic", "channel", "deflate", "snappy", "tls", "client_id", "hostname", "version", "remote_address"}
+	namespace += "_client"
 
 	return clientStats{
 		{
@@ -90,12 +91,11 @@ func ClientStats(namespace string) StatsCollector {
 	}
 }
 
-func (cs clientStats) collect(s *stats, out chan<- prometheus.Metric) {
+func (cs clientStats) set(s *stats) {
 	for _, topic := range s.Topics {
 		for _, channel := range topic.Channels {
 			for _, client := range channel.Clients {
 				labels := prometheus.Labels{
-					"type":           "client",
 					"topic":          topic.Name,
 					"channel":        channel.Name,
 					"deflate":        strconv.FormatBool(client.Deflate),
@@ -109,9 +109,26 @@ func (cs clientStats) collect(s *stats, out chan<- prometheus.Metric) {
 
 				for _, c := range cs {
 					c.vec.With(labels).Set(c.val(client))
-					c.vec.Collect(out)
 				}
 			}
 		}
+	}
+}
+
+func (cs clientStats) collect(out chan<- prometheus.Metric) {
+	for _, c := range cs {
+		c.vec.Collect(out)
+	}
+}
+
+func (cs clientStats) describe(ch chan<- *prometheus.Desc) {
+	for _, c := range cs {
+		c.vec.Describe(ch)
+	}
+}
+
+func (cs clientStats) reset() {
+	for _, c := range cs {
+		c.vec.Reset()
 	}
 }

@@ -14,7 +14,8 @@ type topicStats []struct {
 // TopicStats creates a new stats collector which is able to
 // expose the topic metrics of a nsqd node to Prometheus.
 func TopicStats(namespace string) StatsCollector {
-	labels := []string{"type", "topic", "paused"}
+	labels := []string{"topic", "paused"}
+	namespace += "_topic"
 
 	return topicStats{
 		{
@@ -68,17 +69,32 @@ func TopicStats(namespace string) StatsCollector {
 	}
 }
 
-func (ts topicStats) collect(s *stats, out chan<- prometheus.Metric) {
+func (ts topicStats) set(s *stats) {
 	for _, topic := range s.Topics {
 		labels := prometheus.Labels{
-			"type":   "topic",
 			"topic":  topic.Name,
 			"paused": strconv.FormatBool(topic.Paused),
 		}
 
 		for _, c := range ts {
 			c.vec.With(labels).Set(c.val(topic))
-			c.vec.Collect(out)
 		}
+	}
+}
+func (ts topicStats) collect(out chan<- prometheus.Metric) {
+	for _, c := range ts {
+		c.vec.Collect(out)
+	}
+}
+
+func (ts topicStats) describe(ch chan<- *prometheus.Desc) {
+	for _, c := range ts {
+		c.vec.Describe(ch)
+	}
+}
+
+func (ts topicStats) reset() {
+	for _, c := range ts {
+		c.vec.Reset()
 	}
 }

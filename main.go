@@ -23,11 +23,6 @@ var (
 	enabledCollectors = flag.String("collect", "stats.topics,stats.channels", "Comma-separated list of collectors to use.")
 	namespace         = flag.String("namespace", "nsq", "Namespace for the NSQ metrics.")
 
-	collectorRegistry = map[string]func(names []string) (collector.Collector, error){
-		"stats": createNsqdStats,
-	}
-
-	// stats.* collectors
 	statsRegistry = map[string]func(namespace string) collector.StatsCollector{
 		"topics":   collector.TopicStats,
 		"channels": collector.ChannelStats,
@@ -65,47 +60,31 @@ func main() {
 }
 
 func createNsqExecutor() (*collector.NsqExecutor, error) {
-	collectors := make(map[string][]string)
-	for _, name := range strings.Split(*enabledCollectors, ",") {
-		name = strings.TrimSpace(name)
-		parts := strings.SplitN(name, ".", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid collector name: %s", name)
-		}
-		collectors[parts[0]] = append(collectors[parts[0]], parts[1])
-	}
 
-	ex := collector.NewNsqExecutor(*namespace)
-	for collector, subcollectors := range collectors {
-		newCollector, has := collectorRegistry[collector]
-		if !has {
-			return nil, fmt.Errorf("invalid collector: %s", collector)
-		}
-
-		c, err := newCollector(subcollectors)
-		if err != nil {
-			return nil, err
-		}
-		ex.AddCollector(collector, c)
-	}
-	return ex, nil
-}
-
-func createNsqdStats(statsCollectors []string) (collector.Collector, error) {
 	nsqdURL, err := normalizeURL(*nsqdURL)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := collector.NewNsqdStats(*namespace, nsqdURL)
-	for _, c := range statsCollectors {
-		newStatsCollector, has := statsRegistry[c]
-		if !has {
-			return nil, fmt.Errorf("unknown stats collector: %s", c)
+	ex := collector.NewNsqExecutor(*namespace, nsqdURL)
+	for _, param := range strings.Split(*enabledCollectors, ",") {
+		param = strings.TrimSpace(param)
+		parts := strings.SplitN(param, ".", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid collector name: %s", param)
 		}
-		stats.Use(newStatsCollector(*namespace))
+		if parts[0] != "stats" {
+			return nil, fmt.Errorf("invalid collector prefix: %s", parts[0])
+		}
+
+		name := parts[1]
+		c, has := statsRegistry[name]
+		if !has {
+			return nil, fmt.Errorf("unknown stats collector: %s", name)
+		}
+		ex.Use(c(*namespace))
 	}
-	return stats, nil
+	return ex, nil
 }
 
 func normalizeURL(ustr string) (string, error) {
