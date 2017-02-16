@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/lovoo/nsq_exporter/collector"
 
@@ -22,6 +23,7 @@ var (
 	nsqdURL           = flag.String("nsqd.addr", "http://localhost:4151/stats", "Address of the nsqd node.")
 	enabledCollectors = flag.String("collect", "stats.topics,stats.channels", "Comma-separated list of collectors to use.")
 	namespace         = flag.String("namespace", "nsq", "Namespace for the NSQ metrics.")
+	timeout           = flag.Duration("timeout", 5*time.Second, "Timeout for reading NSQ stats.")
 
 	statsRegistry = map[string]func(namespace string) collector.StatsCollector{
 		"topics":   collector.TopicStats,
@@ -66,7 +68,7 @@ func createNsqExecutor() (*collector.NsqExecutor, error) {
 		return nil, err
 	}
 
-	ex := collector.NewNsqExecutor(*namespace, nsqdURL)
+	ex := collector.NewNsqExecutor(*namespace, nsqdURL, *timeout)
 	for _, param := range strings.Split(*enabledCollectors, ",") {
 		param = strings.TrimSpace(param)
 		parts := strings.SplitN(param, ".", 2)
