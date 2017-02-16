@@ -7,8 +7,8 @@ import (
 )
 
 type topicStats []struct {
-	val func(*topic) float64
-	vec *prometheus.GaugeVec
+	valFunc func(*topic) float64
+	vec     *prometheus.GaugeVec
 }
 
 // TopicStats creates a new stats collector which is able to
@@ -19,7 +19,7 @@ func TopicStats(namespace string) StatsCollector {
 
 	return topicStats{
 		{
-			val: func(t *topic) float64 { return float64(len(t.Channels)) },
+			valFunc: func(t *topic) float64 { return float64(len(t.Channels)) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "channel_count",
@@ -27,7 +27,7 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(t *topic) float64 { return float64(t.Depth) },
+			valFunc: func(t *topic) float64 { return float64(t.Depth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "depth",
@@ -35,7 +35,7 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(t *topic) float64 { return float64(t.BackendDepth) },
+			valFunc: func(t *topic) float64 { return float64(t.BackendDepth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "backend_depth",
@@ -43,7 +43,7 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(t *topic) float64 { return getPercentile(t, 99) },
+			valFunc: func(t *topic) float64 { return getPercentile(t, 99) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "e2e_latency_99_percentile",
@@ -51,7 +51,7 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(t *topic) float64 { return getPercentile(t, 95) },
+			valFunc: func(t *topic) float64 { return getPercentile(t, 95) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "e2e_latency_95_percentile",
@@ -59,7 +59,7 @@ func TopicStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(t *topic) float64 { return float64(t.MessageCount) },
+			valFunc: func(t *topic) float64 { return float64(t.MessageCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "message_count",
@@ -77,7 +77,7 @@ func (ts topicStats) set(s *stats) {
 		}
 
 		for _, c := range ts {
-			c.vec.With(labels).Set(c.val(topic))
+			c.vec.With(labels).Set(c.valFunc(topic))
 		}
 	}
 }

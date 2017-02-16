@@ -1,12 +1,7 @@
-FROM alpine:latest
+FROM        quay.io/prometheus/busybox:latest
+MAINTAINER  Timon Wong <timon86.wang@gmail.com>
 
-EXPOSE 9117
+COPY        nsq_exporter /bin/nsq_exporter
 
-ENV  GOPATH /go
-ENV APPPATH $GOPATH/src/github.com/lovoo/nsq_exporter
-COPY . $APPPATH
-RUN apk add --update -t build-deps go git mercurial libc-dev gcc libgcc \
-    && cd $APPPATH && go get -d && go build -o /nsq_exporter \
-    && apk del --purge build-deps && rm -rf $GOPATH
-
-ENTRYPOINT ["/nsq_exporter"]
+EXPOSE      9118
+ENTRYPOINT  [ "/bin/nsq_exporter" ]

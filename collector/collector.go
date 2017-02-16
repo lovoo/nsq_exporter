@@ -1,6 +1,8 @@
 package collector
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // StatsCollector defines an interface for collecting specific stats
 // from a nsqd exported stats data.
