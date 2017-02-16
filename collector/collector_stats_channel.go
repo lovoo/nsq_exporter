@@ -7,8 +7,8 @@ import (
 )
 
 type channelStats []struct {
-	val func(*channel) float64
-	vec *prometheus.GaugeVec
+	valFunc func(*channel) float64
+	vec     *prometheus.GaugeVec
 }
 
 // ChannelStats creates a new stats collector which is able to
@@ -20,7 +20,7 @@ func ChannelStats(namespace string) StatsCollector {
 
 	return channelStats{
 		{
-			val: func(c *channel) float64 { return float64(len(c.Clients)) },
+			valFunc: func(c *channel) float64 { return float64(len(c.Clients)) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "client_count",
@@ -28,7 +28,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.Depth) },
+			valFunc: func(c *channel) float64 { return float64(c.Depth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "depth",
@@ -36,7 +36,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.BackendDepth) },
+			valFunc: func(c *channel) float64 { return float64(c.BackendDepth) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "backend_depth",
@@ -44,7 +44,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.MessageCount) },
+			valFunc: func(c *channel) float64 { return float64(c.MessageCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "message_count",
@@ -52,7 +52,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.InFlightCount) },
+			valFunc: func(c *channel) float64 { return float64(c.InFlightCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "in_flight_count",
@@ -60,7 +60,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return c.E2eLatency.percentileValue(0) },
+			valFunc: func(c *channel) float64 { return c.E2eLatency.percentileValue(0) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "e2e_latency_99p",
@@ -68,7 +68,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return c.E2eLatency.percentileValue(1) },
+			valFunc: func(c *channel) float64 { return c.E2eLatency.percentileValue(1) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "e2e_latency_95p",
@@ -76,7 +76,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.DeferredCount) },
+			valFunc: func(c *channel) float64 { return float64(c.DeferredCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "deferred_count",
@@ -84,7 +84,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.RequeueCount) },
+			valFunc: func(c *channel) float64 { return float64(c.RequeueCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "requeue_count",
@@ -92,7 +92,7 @@ func ChannelStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *channel) float64 { return float64(c.TimeoutCount) },
+			valFunc: func(c *channel) float64 { return float64(c.TimeoutCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "timeout_count",
@@ -112,7 +112,7 @@ func (cs channelStats) set(s *stats) {
 			}
 
 			for _, c := range cs {
-				c.vec.With(labels).Set(c.val(channel))
+				c.vec.With(labels).Set(c.valFunc(channel))
 			}
 		}
 	}

@@ -7,8 +7,8 @@ import (
 )
 
 type clientStats []struct {
-	val func(*client) float64
-	vec *prometheus.GaugeVec
+	valFunc func(*client) float64
+	vec     *prometheus.GaugeVec
 }
 
 // ClientStats creates a new stats collector which is able to
@@ -25,7 +25,7 @@ func ClientStats(namespace string) StatsCollector {
 	return clientStats{
 		{
 			// TODO: Give state a descriptive name instead of a number.
-			val: func(c *client) float64 { return float64(c.State) },
+			valFunc: func(c *client) float64 { return float64(c.State) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "state",
@@ -33,7 +33,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.FinishCount) },
+			valFunc: func(c *client) float64 { return float64(c.FinishCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "finish_count",
@@ -41,7 +41,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.MessageCount) },
+			valFunc: func(c *client) float64 { return float64(c.MessageCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "message_count",
@@ -49,7 +49,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.ReadyCount) },
+			valFunc: func(c *client) float64 { return float64(c.ReadyCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "ready_count",
@@ -57,7 +57,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.InFlightCount) },
+			valFunc: func(c *client) float64 { return float64(c.InFlightCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "in_flight_count",
@@ -65,7 +65,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.RequeueCount) },
+			valFunc: func(c *client) float64 { return float64(c.RequeueCount) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "requeue_count",
@@ -73,7 +73,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.ConnectTime) },
+			valFunc: func(c *client) float64 { return float64(c.ConnectTime) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "connect_ts",
@@ -81,7 +81,7 @@ func ClientStats(namespace string) StatsCollector {
 			}, labels),
 		},
 		{
-			val: func(c *client) float64 { return float64(c.SampleRate) },
+			valFunc: func(c *client) float64 { return float64(c.SampleRate) },
 			vec: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Namespace: namespace,
 				Name:      "sample_rate",
@@ -108,7 +108,7 @@ func (cs clientStats) set(s *stats) {
 				}
 
 				for _, c := range cs {
-					c.vec.With(labels).Set(c.val(client))
+					c.vec.With(labels).Set(c.valFunc(client))
 				}
 			}
 		}
