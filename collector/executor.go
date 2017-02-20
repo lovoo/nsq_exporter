@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"net/http"
 	"sync"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 // provides an extra metric for this. This metric is labeled with the
 // scrape result ("success" or "error").
 type NsqExecutor struct {
-	nsqdURL string
+	nsqdURL    string
+	httpClient *http.Client
 
 	collectors []StatsCollector
 	summary    *prometheus.SummaryVec
@@ -23,7 +25,7 @@ type NsqExecutor struct {
 }
 
 // NewNsqExecutor creates a new executor for collecting NSQ metrics.
-func NewNsqExecutor(namespace, nsqdURL string) *NsqExecutor {
+func NewNsqExecutor(namespace, nsqdURL string, timeout time.Duration) *NsqExecutor {
 	sum := prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace: namespace,
 		Subsystem: "exporter",
@@ -33,6 +35,9 @@ func NewNsqExecutor(namespace, nsqdURL string) *NsqExecutor {
 	prometheus.MustRegister(sum)
 	return &NsqExecutor{
 		nsqdURL: nsqdURL,
+		httpClient: &http.Client{
+			Timeout: timeout,
+		},
 		summary: sum,
 	}
 }
@@ -63,7 +68,7 @@ func (e *NsqExecutor) Collect(out chan<- prometheus.Metric) {
 		c.reset()
 	}
 
-	stats, err := getNsqdStats(e.nsqdURL)
+	stats, err := getNsqdStats(e.httpClient, e.nsqdURL)
 	tScrape := time.Since(start).Seconds()
 
 	result := "success"
