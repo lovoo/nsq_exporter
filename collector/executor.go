@@ -1,6 +1,10 @@
 package collector
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
+	"net/http"
 	"sync"
 	"time"
 
@@ -19,11 +23,12 @@ type NsqExecutor struct {
 
 	collectors []StatsCollector
 	summary    *prometheus.SummaryVec
+	client     *http.Client
 	mutex      sync.RWMutex
 }
 
 // NewNsqExecutor creates a new executor for collecting NSQ metrics.
-func NewNsqExecutor(namespace, nsqdURL string) *NsqExecutor {
+func NewNsqExecutor(namespace, nsqdURL, tlsCACert, tlsCert, tlsKey string) (*NsqExecutor, error) {
 	sum := prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace: namespace,
 		Subsystem: "exporter",
@@ -31,10 +36,33 @@ func NewNsqExecutor(namespace, nsqdURL string) *NsqExecutor {
 		Help:      "Duration of a scrape job of the NSQ exporter",
 	}, []string{"result"})
 	prometheus.MustRegister(sum)
+
+	transport := &http.Transport{}
+	if tlsCert != "" && tlsKey != "" {
+		cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		if tlsCACert != "" {
+			caCert, err := ioutil.ReadFile(tlsCACert)
+			if err != nil {
+				return nil, err
+			}
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		}
+		tlsConfig.BuildNameToCertificate()
+		transport.TLSClientConfig = tlsConfig
+	}
 	return &NsqExecutor{
 		nsqdURL: nsqdURL,
 		summary: sum,
-	}
+		client:  &http.Client{Transport: transport},
+	}, nil
 }
 
 // Use configures a specific stats collector, so the stats could be
@@ -63,7 +91,7 @@ func (e *NsqExecutor) Collect(out chan<- prometheus.Metric) {
 		c.reset()
 	}
 
-	stats, err := getNsqdStats(e.nsqdURL)
+	stats, err := getNsqdStats(e.client, e.nsqdURL)
 	tScrape := time.Since(start).Seconds()
 
 	result := "success"
