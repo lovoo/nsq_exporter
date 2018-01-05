@@ -84,9 +84,8 @@ func getPercentile(t *topic, percentile int) float64 {
 	return 0
 }
 
-func getNsqdStats(nsqdURL string) (*stats, error) {
-
-	resp, err := http.Get(nsqdURL)
+func getNsqdStats(client *http.Client, nsqdURL string) (*stats, error) {
+	resp, err := client.Get(nsqdURL)
 	if err != nil {
 		return nil, err
 	}
