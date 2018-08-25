@@ -91,9 +91,9 @@ func getNsqdStats(client *http.Client, nsqdURL string) (*stats, error) {
 	}
 	defer resp.Body.Close()
 
-	var sr statsResponse
+	var sr stats
 	if err = json.NewDecoder(resp.Body).Decode(&sr); err != nil {
 		return nil, err
 	}
-	return &sr.Data, nil
+	return &sr, nil
 }
