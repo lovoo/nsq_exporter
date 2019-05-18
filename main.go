@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/lovoo/nsq_exporter/collector"
+	"github.com/suifengRock/nsq_prometheus_exporter/collector"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
