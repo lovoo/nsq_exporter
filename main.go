@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"net/url"
+	"nsq_exporter/collector"
 	"strings"
-
-	"github.com/lovoo/nsq_exporter/collector"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -20,7 +20,7 @@ var (
 	listenAddress     = flag.String("web.listen", ":9117", "Address on which to expose metrics and web interface.")
 	metricsPath       = flag.String("web.path", "/metrics", "Path under which to expose metrics.")
 	nsqdURL           = flag.String("nsqd.addr", "http://localhost:4151/stats", "Address of the nsqd node.")
-	enabledCollectors = flag.String("collect", "stats.topics,stats.channels", "Comma-separated list of collectors to use.")
+	enabledCollectors = flag.String("collect", "stats.topics,stats.channels,stats.clients", "Comma-separated list of collectors to use.")
 	namespace         = flag.String("namespace", "nsq", "Namespace for the NSQ metrics.")
 	tlsCACert         = flag.String("tls.ca_cert", "", "CA certificate file to be used for nsqd connections.")
 	tlsCert           = flag.String("tls.cert", "", "TLS certificate file to be used for client connections to nsqd.")
@@ -42,7 +42,7 @@ func main() {
 	}
 	prometheus.MustRegister(ex)
 
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	if *metricsPath != "" && *metricsPath != "/" {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`<html>

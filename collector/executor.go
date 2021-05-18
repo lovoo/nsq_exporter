@@ -3,6 +3,7 @@ package collector
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -93,6 +94,8 @@ func (e *NsqExecutor) Collect(out chan<- prometheus.Metric) {
 
 	stats, err := getNsqdStats(e.client, e.nsqdURL)
 	tScrape := time.Since(start).Seconds()
+
+	fmt.Printf("[nsq_exporter] url %s, err %v, get NSQ stats %v\n", e.nsqdURL, err, stats)
 
 	result := "success"
 	if err != nil {
