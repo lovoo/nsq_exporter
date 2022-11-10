@@ -5,42 +5,80 @@ import (
 	"net/http"
 )
 
-type statsResponse struct {
-	StatusCode int    `json:"status_code"`
-	StatusText string `json:"status_text"`
-	Data       stats  `json:"data"`
-}
-
 type stats struct {
-	Version   string   `json:"version"`
-	Health    string   `json:"health"`
-	StartTime int64    `json:"start_time"`
-	Topics    []*topic `json:"topics"`
+	Version   string      `json:"version"`
+	Health    string      `json:"health"`
+	StartTime int64       `json:"start_time"`
+	Topics    []*topic    `json:"topics"`
+	Memory    memory      `json:"memory"`
+	Producers []*producer `json:"producers"`
 }
 
-// see https://github.com/nsqio/nsq/blob/master/nsqd/stats.go
+type producer struct {
+	ClientId                      string      `json:"client_id"`
+	Hostname                      string      `json:"hostname"`
+	Version                       string      `json:"version"`
+	RemoteAddress                 string      `json:"remote_address"`
+	State                         int         `json:"state"`
+	ReadyCount                    int         `json:"ready_count"`
+	InFlightCount                 int         `json:"in_flight_count"`
+	MessageCount                  int64       `json:"message_count"`
+	FinishCount                   int64       `json:"finish_count"`
+	RequeueCount                  int64       `json:"requeue_count"`
+	ConnectTS                     int64       `json:"connect_ts"`
+	SampleRate                    int         `json:"sample_rate"`
+	Deflate                       bool        `json:"deflate"`
+	Snappy                        bool        `json:"snappy"`
+	UserAgent                     string      `json:"user_agent"`
+	PubCounts                     []*pubCount `json:"pub_counts"`
+	TLS                           bool        `json:"tls"`
+	TLSCipherSuite                string      `json:"tls_cipher_suite"`
+	TLSVersion                    string      `json:"tls_version"`
+	TLSNegotiatedProtocol         string      `json:"tls_negotiated_protocol"`
+	TLSNegotiatedProtocolIsMutual bool        `json:"tls_negotiated_protocol_is_mutual"`
+}
+
+type pubCount struct {
+	Topic string `json:"topic"`
+	Count int64  `json:"count"`
+}
+
+type memory struct {
+	HeapObjects       int64 `json:"heap_objects"`
+	HeapIdleBytes     int64 `json:"heap_idle_bytes"`
+	HeapInUseBytes    int64 `json:"heap_in_use_bytes"`
+	HeapReleasedBytes int64 `json:"heap_released_bytes"`
+	GcPauseUsec100    int64 `json:"gc_pause_usec_100"`
+	GcPauseUsec99     int64 `json:"gc_pause_usec_99"`
+	GcPauseUsec95     int64 `json:"gc_pause_usec_95"`
+	NextGcBytes       int64 `json:"next_gc_bytes"`
+	GcTotalRuns       int64 `json:"gc_total_runs"`
+}
+
 type topic struct {
 	Name         string     `json:"topic_name"`
-	Paused       bool       `json:"paused"`
+	Channels     []*channel `json:"channels"`
 	Depth        int64      `json:"depth"`
 	BackendDepth int64      `json:"backend_depth"`
 	MessageCount uint64     `json:"message_count"`
+	MessageBytes uint64     `json:"message_bytes"`
+	Paused       bool       `json:"paused"`
 	E2eLatency   e2elatency `json:"e2e_processing_latency"`
-	Channels     []*channel `json:"channels"`
 }
 
 type channel struct {
 	Name          string     `json:"channel_name"`
-	Paused        bool       `json:"paused"`
 	Depth         int64      `json:"depth"`
 	BackendDepth  int64      `json:"backend_depth"`
-	MessageCount  uint64     `json:"message_count"`
 	InFlightCount int        `json:"in_flight_count"`
 	DeferredCount int        `json:"deferred_count"`
+	MessageCount  uint64     `json:"message_count"`
 	RequeueCount  uint64     `json:"requeue_count"`
 	TimeoutCount  uint64     `json:"timeout_count"`
-	E2eLatency    e2elatency `json:"e2e_processing_latency"`
+	ClientCount   uint64     `json:"client_count"`
 	Clients       []*client  `json:"clients"`
+	Paused        bool       `json:"paused"`
+	E2eLatency    e2elatency `json:"e2e_processing_latency"`
 }
 
 type e2elatency struct {
@@ -56,21 +94,26 @@ func (e *e2elatency) percentileValue(idx int) float64 {
 }
 
 type client struct {
-	ID            string `json:"client_id"`
-	Hostname      string `json:"hostname"`
-	Version       string `json:"version"`
-	RemoteAddress string `json:"remote_address"`
-	State         int32  `json:"state"`
-	FinishCount   uint64 `json:"finish_count"`
-	MessageCount  uint64 `json:"message_count"`
-	ReadyCount    int64  `json:"ready_count"`
-	InFlightCount int64  `json:"in_flight_count"`
-	RequeueCount  uint64 `json:"requeue_count"`
-	ConnectTime   int64  `json:"connect_ts"`
-	SampleRate    int32  `json:"sample_rate"`
-	Deflate       bool   `json:"deflate"`
-	Snappy        bool   `json:"snappy"`
-	TLS           bool   `json:"tls"`
+	ID                            string `json:"client_id"`
+	Hostname                      string `json:"hostname"`
+	Version                       string `json:"version"`
+	RemoteAddress                 string `json:"remote_address"`
+	State                         int32  `json:"state"`
+	ReadyCount                    int64  `json:"ready_count"`
+	InFlightCount                 int64  `json:"in_flight_count"`
+	MessageCount                  uint64 `json:"message_count"`
+	FinishCount                   uint64 `json:"finish_count"`
+	RequeueCount                  uint64 `json:"requeue_count"`
+	ConnectTime                   int64  `json:"connect_ts"`
+	SampleRate                    int32  `json:"sample_rate"`
+	Deflate                       bool   `json:"deflate"`
+	Snappy                        bool   `json:"snappy"`
+	UserAgent                     string `json:"user_agent"`
+	TLS                           bool   `json:"tls"`
+	TLSCipherSuite                string `json:"tls_cipher_suite"`
+	TLSVersion                    string `json:"tls_version"`
+	TLSNegotiatedProtocol         string `json:"tls_negotiated_protocol"`
+	TLSNegotiatedProtocolIsMutual bool   `json:"tls_negotiated_protocol_is_mutual"`
 }
 
 func getPercentile(t *topic, percentile int) float64 {
@@ -91,9 +134,9 @@ func getNsqdStats(client *http.Client, nsqdURL string) (*stats, error) {
 	}
 	defer resp.Body.Close()
 
-	var sr statsResponse
-	if err = json.NewDecoder(resp.Body).Decode(&sr); err != nil {
+	var st stats
+	if err = json.NewDecoder(resp.Body).Decode(&st); err != nil {
 		return nil, err
 	}
-	return &sr.Data, nil
+	return &st, nil
 }
