@@ -3,14 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/seiferli/nsq_exporter/collector"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/lovoo/nsq_exporter/collector"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Version of nsq_exporter. Set at build time.
@@ -42,7 +41,7 @@ func main() {
 	}
 	prometheus.MustRegister(ex)
 
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	if *metricsPath != "" && *metricsPath != "/" {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`<html>

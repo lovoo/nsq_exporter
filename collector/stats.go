@@ -1,7 +1,10 @@
 package collector
 
 import (
+	"bufio"
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 )
 
@@ -85,15 +88,30 @@ func getPercentile(t *topic, percentile int) float64 {
 }
 
 func getNsqdStats(client *http.Client, nsqdURL string) (*stats, error) {
+	log.Print("Get nsqdStats addr ", nsqdURL)
 	resp, err := client.Get(nsqdURL)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var sr statsResponse
-	if err = json.NewDecoder(resp.Body).Decode(&sr); err != nil {
+	var sr stats // statsResponse
+	buf := bufio.NewReader(resp.Body)
+	fullBody := []byte{}
+	for {
+		line, _, err := buf.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		fullBody = append(fullBody, line...)
+	}
+	err = json.Unmarshal(fullBody, &sr)
+	if err != nil {
 		return nil, err
 	}
-	return &sr.Data, nil
+	// body超过一定长度会出现json字符被截断的问题
+	//if err = json.NewDecoder(resp.Body).Decode(&sr); err != nil {
+	//	return nil, err
+	//}
+	return &sr, nil
 }
