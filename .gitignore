@@ -1,6 +1,1 @@
 build/
-/.idea/.gitignore
-/.idea/modules.xml
-/.idea/nsq_exporter.iml
-/.idea/vcs.xml
-/nsq_exporter
