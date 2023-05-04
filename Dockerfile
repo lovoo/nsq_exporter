@@ -1,4 +1,4 @@
-FROM golang:1.20.3-bullseye as builder
+FROM golang:1.20.3-alpine as builder
 
 #RUN apk add --update -t build-deps go git mercurial libc-dev gcc libgcc \
 #    && cd $APPPATH && go get -d && go build -o /nsq_exporter \
@@ -7,7 +7,7 @@ FROM golang:1.20.3-bullseye as builder
 WORKDIR /work
 COPY go.mod .
 COPY go.sum .
-RUN go mod download -x
+COPY vendor/ vendor/
 
 COPY  ./collector ./collector
 COPY *.go .
