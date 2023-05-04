@@ -10,11 +10,13 @@ build:
 
 .PHONY: deps-init deps-get
 deps-init:
-	@go get -u github.com/kardianos/govendor
-	$(GOPATH)/bin/govendor init
+	-go mod init
+	go mod vendor
 
 deps-get: deps-init
-	@$(GOPATH)/bin/govendor get github.com/lovoo/nsq_exporter
+	go get -u ./...
+	go mod tidy
+	go mod vendor
 
 .PHONY: clean
 clean:
