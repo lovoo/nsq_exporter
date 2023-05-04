@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag AbsoluteSoftware/nsq_exporter:$(date +%s)
+      run: docker build . --file Dockerfile --tag nsq_exporter:$(date +%s)
